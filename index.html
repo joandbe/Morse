@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estación Telegráfica Morse - Ciber-Comando SEC-08</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Reproductor Oculto de YouTube (Audio Ambiental) -->
+  <div id="youtubeAudioContainer" style="display:none;">
+    <iframe id="ytAudioPlayer" width="200" height="200" src="https://www.youtube.com/embed/8ZmzIMAcX6k?enablejsapi=1&autoplay=1&loop=1&playlist=8ZmzIMAcX6k" allow="autoplay"></iframe>
+  </div>
+
+  <header class="tactical-header">
+    <div class="brand-title">
+      <div class="status-indicator"></div>
+      <h1>ESTACIÓN TELEGRÁFICA <span class="tag">SEC-08</span></h1>
+    </div>
+    
+    <div class="control-bar">
+      <div class="field-group">
+        <label for="mainModeSelect">INTERFAZ:</label>
+        <select id="mainModeSelect">
+          <option value="chat">Canal de Chat</option>
+          <option value="game">Modo Práctica (Misión)</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="inputSource">FUENTE:</label>
+        <select id="inputSource">
+          <option value="keyboard">Teclado (Espacio)</option>
+          <option value="serial">Controlador (Arduino)</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label for="modeSelect">MODO:</label>
+        <select id="modeSelect">
+          <option value="receptor">Receptor</option>
+          <option value="emisor">Emisor</option>
+        </select>
+      </div>
+
+      <button id="btnConnect" class="btn hidden">Conectar Arduino</button>
+    </div>
+  </header>
+
+  <main class="dashboard-three-columns">
+    <!-- COLUMNA IZQUIERDA -->
+    <section class="panel-left card">
+      <!-- Chat -->
+      <div id="panelChat">
+        <div class="card-header">
+          <h2>REGISTRO DE CANAL</h2>
+          <span class="badge">[LOGS]</span>
+        </div>
+        <div id="chatBody" class="chat-body-permanent">
+          <div id="chatLogs" class="chat-logs"></div>
+        </div>
+      </div>
+
+      <!-- Panel Juego / Práctica -->
+      <div id="panelGame" class="hidden">
+        <div class="card-header">
+          <h2>OP. ECHO TRANSMIT</h2>
+          <span id="gameStatus" class="badge">[INACTIVO]</span>
+        </div>
+        
+        <div class="game-controls">
+          <div class="field-group-stack">
+            <label for="gameDifficulty">DIFICULTAD:</label>
+            <select id="gameDifficulty">
+              <option value="basico">Básico (60s)</option>
+              <option value="moderado">Moderado (45s)</option>
+              <option value="dificil">Difícil (60s - Permite Corregir)</option>
+              <option value="experto">Experto (50s - Cero Errores)</option>
+            </select>
+          </div>
+
+          <div class="field-group-stack">
+            <label for="gameModeNumbers">INCLUIR NÚMEROS:</label>
+            <select id="gameModeNumbers">
+              <option value="no">Sin Números (Solo Letras)</option>
+              <option value="yes">Con Números</option>
+            </select>
+          </div>
+
+          <!-- Control de Volumen Ambiental -->
+          <div class="field-group-stack slider-stack">
+            <div class="slider-header-inline">
+              <label for="ambientVolumeSlider">VOLUMEN AMBIENTAL:</label>
+              <span id="volumeValue" class="mono-highlight">70%</span>
+            </div>
+            <input type="range" id="ambientVolumeSlider" min="0" max="100" step="5" value="70">
+          </div>
+
+          <button id="btnOpenBriefing" class="btn btn-accent w-full">Iniciar Misión</button>
+          <button id="btnStopGame" class="btn btn-danger w-full hidden">Abortar Misión</button>
+        </div>
+
+        <div class="sitrep-box card-sub">
+          <span class="sub-label">REPORTES DE SITUACIÓN (SITREP)</span>
+          <p id="gameSitrep">Selecciona dificultad e inicia transmisión.</p>
+        </div>
+
+        <div class="target-box card-sub">
+          <div class="target-header">
+            <span class="sub-label">MENSAJE A TRANSMITIR</span>
+            <span id="gameTimer" class="timer-display">--</span>
+          </div>
+          <div id="targetMessage" class="target-text">ESPERANDO ORDEN...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMNA CENTRAL -->
+    <section class="panel-center">
+      <div class="card slider-card">
+        <div class="slider-header">
+          <label for="spacingSlider">INTERVALO DE PAUSA (LATENCIA):</label>
+          <span id="spacingValue" class="mono-highlight">800 ms</span>
+        </div>
+        <input type="range" id="spacingSlider" min="400" max="2000" step="50" value="800">
+      </div>
+
+      <div class="card current-letter-card">
+        <div class="compact-row">
+          <div class="code-box">
+            <span class="sub-label">BUFFER MORSE ACTIVO</span>
+            <div id="currentMorse" class="morse-buffer"></div>
+          </div>
+          <div class="letter-box">
+            <span class="sub-label">CARÁCTER DECODIFICADO</span>
+            <div id="currentLetter" class="big-letter">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card message-card">
+        <div class="card-header">
+          <h2>FLUJO DE DATOS (BRUTO / RAW)</h2>
+          <span class="badge">[STREAM]</span>
+        </div>
+        <div id="fullMessage" class="message-box"></div>
+        
+        <div class="card-header">
+          <h2>MENSAJE INTERPRETADO (LIMPIO)</h2>
+          <span class="badge badge-accent">[DECRYPTED]</span>
+        </div>
+        <div id="interpretedMessage" class="message-box clean-box"></div>
+
+        <div class="actions">
+          <button id="btnSendToChat" class="btn-sec btn-accent">Transmitir al Canal</button>
+          <button id="btnDeleteLast" class="btn-sec">Borrar Carácter</button>
+          <button id="btnClear" class="btn-sec btn-danger">Reiniciar Buffer</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLUMNA DERECHA -->
+    <section class="panel-right card">
+      <div class="card-header">
+        <h2>TABLA DE REFERENCIA</h2>
+        <span class="badge">[REF-CIPHER]</span>
+      </div>
+      
+      <div class="dict-section-title">ALFABETO (A-Z)</div>
+      <div id="morseLetters" class="dictionary-grid"></div>
+
+      <div class="dict-section-title">NÚMEROS (0-9)</div>
+      <div id="morseNumbers" class="dictionary-grid"></div>
+    </section>
+  </main>
+
+  <!-- VENTANA FLOTANTE 1: BRIEFING / DEBRIEFING DE MISIÓN -->
+  <div id="briefingModal" class="modal-overlay hidden">
+    <div class="modal-content card">
+      <button id="btnCloseModal" class="btn-close-modal" title="Cerrar ventana">✕</button>
+      
+      <div class="card-header">
+        <h2 id="modalTitle">ORDEN DE MISIÓN - BRIEFING TÁCTICO</h2>
+        <span class="badge badge-accent">[TOP SECRET]</span>
+      </div>
+      
+      <div class="modal-body">
+        <span class="sub-label">CONTEXTO OPERATIVO:</span>
+        <p id="modalSitrep" class="sitrep-modal-text"></p>
+
+        <!-- Selector de Dificultad Post-Misión -->
+        <div id="modalDifficultyContainer" class="field-group-stack hidden" style="margin-top: 10px;">
+          <label for="modalGameDifficulty">CAMBIAR DIFICULTAD PARA SIGUIENTE MISIÓN:</label>
+          <select id="modalGameDifficulty">
+            <option value="basico">Básico (60s)</option>
+            <option value="moderado">Moderado (45s)</option>
+            <option value="dificil">Difícil (60s - Permite Corregir)</option>
+            <option value="experto">Experto (50s - Cero Errores)</option>
+          </select>
+        </div>
+
+        <span class="sub-label">MENSAJE OBJETIVO A TRANSMITIR:</span>
+        <div id="modalTargetMessage" class="target-modal-box"></div>
+      </div>
+
+      <div id="modalControlsContainer" class="modal-actions">
+        <!-- Dinámico desde JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- VENTANA FLOTANTE 2: ADVERTENCIA DE DIFICULTAD -->
+  <div id="warningModal" class="modal-overlay hidden">
+    <div class="modal-content card">
+      <div class="card-header">
+        <h2>ALERTA DE PROTOCOLO TÁCTICO</h2>
+        <span class="badge badge-danger">[ADVERTENCIA]</span>
+      </div>
+      
+      <div class="modal-body">
+        <p id="warningText" class="sitrep-modal-text"></p>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnAcceptWarning" class="btn btn-accent">Proceder con la Misión</button>
+        <button id="btnCancelWarning" class="btn btn-danger">Volver a Práctica</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VENTANA FLOTANTE 3: RECOMENDACIÓN DE AURICULARES -->
+  <div id="headsetModal" class="modal-overlay hidden">
+    <div class="modal-content card headset-card">
+      <div class="card-header">
+        <h2>EXPERIENCIA DE AUDIO INMERSIVA</h2>
+        <span class="badge badge-accent">[CONSEJO]</span>
+      </div>
+      
+      <div class="modal-body">
+        <p class="sitrep-modal-text">
+          Para hacer la práctica mucho más realista e inmersiva, el modo misión cuenta con audio ambiental de fondo (estática de radio y ambiente nocturno). <strong>Te recomendamos usar auriculares</strong> para disfrutar de una mejor experiencia.
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnAcceptHeadset" class="btn btn-accent w-full">¡Entendido, Comenzar!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API de YouTube IFrame -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>
